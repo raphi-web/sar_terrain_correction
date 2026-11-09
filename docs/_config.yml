@@ -1,0 +1,18 @@
+title: "I am scared of SAR"
+description: "Terrain correcting Sentinel-1 GRD products from scratch, in Python."
+
+theme: minima
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  # Leave the math alone: MathJax 3 in _includes/head-custom.html renders
+  # $...$ and $$...$$ in the browser. kramdown's own math_engine: mathjax emits
+  # MathJax 2 style <script type="math/tex"> tags, which MathJax 3 ignores.
+  math_engine: none
+  syntax_highlighter: rouge
+
+# keep the repository's data products out of the published site
+exclude:
+  - "*.tif"
+  - "*.tiff"
