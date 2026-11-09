@@ -12,7 +12,6 @@ reproduces it to sub-millimeter range.
 | Slant range | **0.2 mm** max |
 | Azimuth line | **0.191 px** max |
 | Range pixel | **0.0153 px** max |
-| Slant to ground, forward polynomial | **0.0000 m** |
 
 The 0.19 px azimuth residual is the grid's own time quantization (0.28 ms), not the solver.
 
