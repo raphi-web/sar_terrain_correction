@@ -133,6 +133,10 @@ and still sit a couple of pixels off.
 
 We have 17 satellite positions and velocities, 10 seconds apart. That table is the entire description of the orbit inside the product.
 
+![Sub-satellite track in kilometres from the scene centre](figures/fig1_track_km.png)
+
+The orange dots are the 17 state vectors, 10 seconds apart, so the table covers 160 seconds of orbit. The thick part of the line is the 40 second acquisition window of this scene. The scene centre P sits about 490 km to the east of the track, which is not a plotting mistake: the radar looks sideways, so it images ground it never flies over. The near edge of this swath is at 30.3° incidence, and at this altitude that lands roughly 490 km from nadir, which is where the scene begins.
+
 ### Why we need a function, not 17 points
 
 Every ground point is imaged at a different instant. The radar looks sideways and the satellite keeps moving, so a point sits at broadside for one moment only. The next chapter asks, for each of them, "where was the satellite at that moment?", and the answer has to exist for times that are not in the table. The 17 samples have to become a function before anything else can happen.

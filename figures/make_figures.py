@@ -103,7 +103,7 @@ ax[0].scatter(lon_o, lat_o, s=22, color=C2, zorder=3, label="17 orbit state vect
 ax[0].scatter([G[:, LON].mean()], [G[:, LAT].mean()], marker="x", s=60, color=C3, label="scene centre")
 ax[0].set_xlabel("longitude [deg]")
 ax[0].set_ylabel("latitude [deg]")
-ax[0].set_title("L1 · sub-satellite ground track (25 s)")
+ax[0].set_title("L1 · sub-satellite ground track (160 s)")
 ax[0].legend(loc="lower right")
 ax[0].ticklabel_format(useOffset=False)
 
