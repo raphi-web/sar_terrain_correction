@@ -39,7 +39,11 @@ Three symbols, and they mean exactly this:
 - $P$ is the ground point we are curious about. Also a position in metres.
 - $V(t)$ is the satellite velocity at that same instant, in metres per second.
 
-$S - P$ points from the ground up to the satellite, so $|S - P|$ is the slant range, and $(S - P)\cdot V$ is the rate at which that distance changes. It reaches zero at the closest approach, when the range stops shrinking and starts growing again. That instant is the azimuth time, and it is the coordinate we will spend most of this post chasing.
+
+$S - P$ points from the ground up to the satellite, so $|S - P|$ is the slant range, 
+and $(S - P)\cdot V$ is the rate at which that distance changes. 
+It reaches zero at the closest approach, when the range stops shrinking and starts growing again. 
+That instant is the azimuth time, and it is the coordinate we will spend most of this post chasing.
 
 SAR does not have the classical X, Y coordinates. We work with azimuth and range¹.
 
@@ -137,7 +141,7 @@ I know cubic Hermite sounds like a nightmare. Stay with me, because it is ten li
 
 ### Why not a straight line
 
-The satellite is in free fall around the Earth, about 8 m/s² of centripetal acceleration. Over a 10 second gap a straight chord misses the real trajectory by roughly
+The satellite is in free fall around the Earth, about 8 m/s². Over a 10 second gap a straight chord misses the real trajectory by roughly
 
 $$\frac{1}{8}\,a\,\Delta t^{2} \approx 102\ \text{m}$$
 
