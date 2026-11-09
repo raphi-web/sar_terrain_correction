@@ -157,7 +157,10 @@ $$(S(t) - P)\cdot V(t) = 0$$
 
 so the same spline that positions the satellite also decides when it looked at a given point. Interpolation here is half of the equation that will geolocate every pixel.
 
-One thing worth knowing before we write any code: SNAP does not use Hermite. It interpolates the orbit with an 8 point Lagrange polynomial over the neighbouring state vectors, and it interpolates the tabulated velocities with the same weights instead of differentiating the position curve ([OrbitStateVectors.java](https://github.com/senbox-org/s1tbx/blob/master/s1tbx-commons/src/main/java/org/esa/s1tbx/commons/OrbitStateVectors.java), the method is `getPositionVelocity`). Two reasons I still went with Hermite: it is local, so a query time only needs the two vectors that bracket it, and it uses the velocity as a slope constraint instead of treating it as a second series to be interpolated. The check at the end of this chapter is what decides whether either choice was good enough.
+**SNAP does not use Hermite**. It interpolates the orbit with an 8 point Lagrange polynomial over the neighbouring state vectors, 
+and it interpolates the velocities with the same weights instead of differentiating the position curve ([OrbitStateVectors.java](https://github.com/senbox-org/s1tbx/blob/master/s1tbx-commons/src/main/java/org/esa/s1tbx/commons/OrbitStateVectors.java), 
+the method is `getPositionVelocity`). Two reasons I still went with Hermite: it is local, so a query time only needs the two vectors that bracket it, and it uses the velocity as a slope constraint 
+instead of treating it as a second series to be interpolated. The check at the end of this chapter is what decides whether my choice was good enough.
 
 ### Position $S(t)$
 
