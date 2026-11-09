@@ -67,7 +67,6 @@ def position(t: float | np.ndarray) -> np.ndarray:
     i = np.searchsorted(t_orb, t) - 1  # 	which 10-s segment each query time falls in
     i = np.clip(i, 0, len(t_orb) - 2) # protect the boundaries of the t_orb array
     h = t_orb[i + 1] - t_orb[i]  # calculate segment length
-    s = (t - t_orb[i]) / h  # normalize time inside segment 0 to 1
 
     # get the endpoint states
     v_i = v_orb[i]  # velocity, endpoints of state vectors
@@ -116,7 +115,6 @@ def velocity(t: float | np.ndarray) -> np.ndarray:
     i = np.searchsorted(t_orb, t) - 1  # find correct orbit segment
     i = np.clip(i, 0, len(t_orb) - 2) # clamp index
     h = t_orb[i + 1] - t_orb[i]  # 	segment length
-    s = (t - t_orb[i]) / h  # normalize time
 
     v_i = v_orb[i]  # velocity,
     v_next = v_orb[i + 1] # velocity end point
@@ -127,7 +125,6 @@ def velocity(t: float | np.ndarray) -> np.ndarray:
     # convert velocity to hermite tangent
     m_i = h[:, None] * v_i
     m_next = h[:, None] * v_next
-    s = (t - t_orb[i]) / h
 
     s = (t - t_orb[i]) / h
     s_ = s[:, None]
