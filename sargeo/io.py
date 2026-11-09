@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 
 import numpy as np
 
@@ -21,7 +21,11 @@ TAU, LINE, PIXEL, LAT, LON, H, INC, ELEV = range(8)
 
 
 def iso2s(t: str) -> float:
-    return datetime.fromisoformat(t).timestamp()
+    """ISO 8601 -> Unix epoch seconds. Naive strings are UTC (annotation is UTC)."""
+    dt = datetime.fromisoformat(t)
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.timestamp()
 
 
 def load_meta() -> dict:

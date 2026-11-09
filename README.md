@@ -26,6 +26,9 @@ The 0.19 px azimuth residual is the grid's own time quantization (0.28 ms), not 
 | `sargeo/ortho.py` | per map pixel inverse geocoding, bilinear resampling, GeoTIFF output |
 | `sargeo/terrain.py` | DEM surface normals, signed projected incidence, layover and shadow masks (horizon walk) |
 | `sargeo/radiometry.py` | calibration lookup, DN to sigma0, cosine terrain flattening |
+| `sargeo/safeparse.py` | parse any COG SAFE annotation into the `meta/` cache |
+| `sargeo/product.py` | scene extent and the chunked multiband writer |
+| `sargeo/cli.py` | `prepare-meta` and `run` subcommands |
 
 Each module has a test file with tolerances measured against the product.
 
@@ -57,8 +60,29 @@ Two inputs, both public:
 
 `meta/` holds the orbit, geolocation grid, SRGR coefficients and timing extracted from
 the annotation XML, so the tests run without touching the 1.2 GB measurement files for
-the geometry checks. It is specific to this scene; regenerating it for another product
-is on the roadmap.
+the geometry checks. For a different scene, regenerate it:
+
+```bash
+python prepare_meta.py path/to/S1D_....SAFE
+```
+
+The parser accepts both the COG layout (no XML namespaces) and older namespaced
+annotations, and treats the annotation timestamps as UTC.
+
+## Command line
+
+```bash
+python prepare_meta.py path/to/S1D_....SAFE                     # meta/ for this product
+python -m sargeo.cli run --safe path/to/S1D_....SAFE \
+                          --dem dem.tif --out product.tif       # whole scene
+python -m sargeo.cli run ... --aoi 3500 1800 1000 1000          # DEM pixel window
+python -m sargeo.cli run ... --pol vh --bands dn,sigma0,gamma0
+```
+
+`--aoi` is a window in DEM pixels; omit it to process the full scene footprint. Output
+bands are `dn` (orthorectified amplitude), `sigma0` and `gamma0`, all float32 with NaN
+no-data. Full scene on this product: 11 112 x 8 190 = 91 MP, roughly 25 minutes with
+pure numpy, about 3 GB peak memory thanks to the strip processing.
 
 ## Run the tests
 
@@ -69,6 +93,7 @@ python tests/test_l3_geo.py       # 5
 python tests/test_l4_ortho.py     # 4
 python tests/test_l5_terrain.py   # 6
 python tests/test_l6_radiometry.py # 5
+python tests/test_l9_pipeline.py   # 4  (SAFE parser, scene extent, CLI parity)
 ```
 
 A small orthorectified AOI:
