@@ -101,7 +101,7 @@ $$z = \big(N(1 - e^{2}) + h\big)\sin\varphi$$
 
 with latitude $\varphi$, longitude $\lambda$, and $h$ the **ellipsoidal** height, all in metres.
 
-The $N$ in $x$ and $y$, but $N(1-e^{2})$ in $z$, Geodetic latitude is defined by the surface normal, and on a squashed ellipsoid that normal does not pass through the centre. Get it wrong and the point lands consistently wrong, which is the worst kind of geodesy bug, because nothing crashes and the picture still looks fine.
+The $N$ in $x$ and $y$, but $N(1-e^{2})$ in $z$: Geodetic latitude is defined by the surface normal, and on a squashed ellipsoid that normal does not pass through the centre. Get it wrong and the point lands consistently wrong, which is the worst kind of geodesy bug, because nothing crashes and the picture still looks fine.
 
 In code that is one call. The algebra above is the entire function.
 
