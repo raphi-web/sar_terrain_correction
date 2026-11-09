@@ -33,17 +33,16 @@ def main(argv=None) -> int:
     rn.add_argument("--bands", default="dn,sigma0,gamma0",
                     help="comma separated subset of dn,sigma0,gamma0")
     rn.add_argument("--no-progress", action="store_true")
-    rn.add_argument("--prepare-meta", action="store_true",
-                    help="run prepare-meta first (writes to <repo>/meta)")
+    rn.add_argument("--meta", default=None,
+                    help="meta directory (default: per-scene cache under ~/.cache/sargeo)")
+    rn.add_argument("--refresh-meta", action="store_true",
+                    help="rebuild the meta cache even if it looks current")
 
     a = ap.parse_args(argv)
 
     if a.cmd == "prepare-meta":
         safeparse.prepare_meta(a.safe, a.out, a.pol)
         return 0
-
-    if a.prepare_meta:
-        safeparse.prepare_meta(a.safe, None, a.pol)
 
     bands = tuple(b.strip() for b in a.bands.split(",") if b.strip())
     bad = [b for b in bands if b not in product.BANDS]
@@ -53,7 +52,8 @@ def main(argv=None) -> int:
     res = product.write_product(a.safe, a.dem, a.out, pol=a.pol,
                                 aoi=tuple(a.aoi) if a.aoi else None,
                                 chunk_rows=a.chunk, bands=bands,
-                                progress=not a.no_progress)
+                                progress=not a.no_progress,
+                                meta_dir=a.meta, refresh_meta=a.refresh_meta)
     print(f"\nwrote {res['out']}  {res['shape'][1]}x{res['shape'][0]}  bands={res['bands']}")
     print(f"valid {res['valid_frac']*100:.1f}%", end="")
     if "sigma0_p50" in res:

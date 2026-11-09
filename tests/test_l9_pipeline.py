@@ -68,7 +68,8 @@ def test_cli_product_matches_pipeline():
     with tempfile.TemporaryDirectory() as td:
         out = os.path.join(td, "aoi.tif")
         res = product.write_product(SAFE, DEM, out, pol="vv", aoi=(3500, 1800, 200, 200),
-                                    chunk_rows=200, progress=False)
+                                    chunk_rows=200, progress=False,
+                                    meta_dir=os.path.join(ROOT, "meta"))
         assert res["shape"] == [200, 200] and res["valid_frac"] > 0.9
         with rasterio.open(out) as ds:
             assert ds.count == 3 and ds.crs.to_epsg() == 32633
@@ -83,9 +84,37 @@ def test_cli_product_matches_pipeline():
         assert abs(d) < 0.01, f"CLI vs pipeline differ by {d:.3f} dB"
 
 
+def test_meta_cache_builds_reuses_and_repairs():
+    import time
+
+    from sargeo import io
+
+    with tempfile.TemporaryDirectory() as td:
+        cache = os.path.join(td, "cache")
+        d1 = safeparse.ensure_meta(SAFE, "vv", meta_dir=cache, verbose=False)
+        assert os.path.isfile(os.path.join(d1, "source.json")), "no stamp written"
+        assert os.path.isfile(os.path.join(d1, "timing.json"))
+
+        t1 = os.path.getmtime(os.path.join(d1, "s1_meta.json"))
+        time.sleep(0.02)
+        d2 = safeparse.ensure_meta(SAFE, "vv", meta_dir=cache, verbose=False)
+        assert d1 == d2 and os.path.getmtime(os.path.join(d2, "s1_meta.json")) == t1, "cache not reused"
+
+        os.remove(os.path.join(d2, "timing.json"))       # damage the cache
+        d3 = safeparse.ensure_meta(SAFE, "vv", meta_dir=cache, verbose=False)
+        assert os.path.isfile(os.path.join(d3, "timing.json")), "cache not repaired"
+
+        io.use_meta(d3)
+        assert os.path.abspath(io.meta_dir()) == os.path.abspath(d3)
+        assert io.timing()["nlines"] == 16677
+
+    io.use_meta(os.path.join(ROOT, "meta"))              # leave the tests as they were
+
+
 if __name__ == "__main__":
     tests = [test_find_product_both_polarisations, test_prepare_meta_reproduces_shipped_cache,
-             test_scene_extent_matches_reference, test_cli_product_matches_pipeline]
+             test_scene_extent_matches_reference, test_cli_product_matches_pipeline,
+             test_meta_cache_builds_reuses_and_repairs]
     fails = 0
     for fn in tests:
         try:

@@ -63,24 +63,30 @@ Two inputs, both public:
 
 `meta/` holds the orbit, geolocation grid, SRGR coefficients and timing extracted from
 the annotation XML, so the tests run without touching the 1.2 GB measurement files for
-the geometry checks. For a different scene, regenerate it:
-
-```bash
-python prepare_meta.py path/to/S1D_....SAFE
-```
-
-The parser accepts both the COG layout (no XML namespaces) and older namespaced
-annotations, and treats the annotation timestamps as UTC.
+the geometry checks. You normally never build it by hand: `run` creates a per-scene
+cache automatically, keyed by SAFE name and polarisation, under `~/.cache/sargeo/`
+(override with `SARGEO_CACHE` or `--meta`). The cache carries a stamp of the measurement
+file, so a different or modified product rebuilds it instead of silently reusing stale
+geometry.
 
 ## Command line
 
 ```bash
-python prepare_meta.py path/to/S1D_....SAFE                     # meta/ for this product
+# one command: builds the meta cache on first use, reuses it afterwards
 python -m sargeo.cli run --safe path/to/S1D_....SAFE \
-                          --dem dem.tif --out product.tif       # whole scene
-python -m sargeo.cli run ... --aoi 3500 1800 1000 1000          # DEM pixel window
-python -m sargeo.cli run ... --pol vh --bands dn,sigma0,gamma0
+                          --dem dem.tif --out product.tif
+
+python -m sargeo.cli run ... --aoi 3500 1800 1000 1000    # DEM pixel window
+python -m sargeo.cli run ... --pol vh                     # other polarisation
+python -m sargeo.cli run ... --meta ./cache --refresh-meta # explicit / forced cache
+
+# optional: build the cache by itself, e.g. to inspect the range residual
+python prepare_meta.py path/to/S1D_....SAFE
 ```
+
+The parser accepts both the COG layout (no XML namespaces) and older namespaced
+annotations, and treats the annotation timestamps as UTC. On every build it prints the
+free physics check `|S(t)-P|` against `c·tau/2` (0.219 mm on the demo scene).
 
 `--aoi` is a window in DEM pixels; omit it to process the full scene footprint. Output
 bands are `dn` (orthorectified amplitude), `sigma0` and `gamma0`, all float32 with NaN

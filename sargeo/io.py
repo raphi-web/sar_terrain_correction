@@ -15,7 +15,21 @@ from datetime import datetime, timezone
 import numpy as np
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-META = os.path.join(ROOT, "meta")
+_DEFAULT_META = os.path.join(ROOT, "meta")
+_META_DIR = os.environ.get("SARGEO_META", _DEFAULT_META)
+
+
+def meta_dir() -> str:
+    """Directory the readers currently use."""
+    return _META_DIR
+
+
+def use_meta(path: str) -> None:
+    """Point the readers at another meta directory. Clears the parsed caches."""
+    global _META_DIR, _ORB, _CONV
+    _META_DIR = os.path.abspath(path)
+    _ORB = None
+    _CONV = None
 
 TAU, LINE, PIXEL, LAT, LON, H, INC, ELEV = range(8)
 
@@ -29,7 +43,7 @@ def iso2s(t: str) -> float:
 
 
 def load_meta() -> dict:
-    with open(os.path.join(META, "s1_meta.json")) as f:
+    with open(os.path.join(_META_DIR, "s1_meta.json")) as f:
         return json.load(f)
 
 
@@ -55,12 +69,12 @@ def orbit_arrays() -> tuple[np.ndarray, np.ndarray, np.ndarray]:
 
 def grid() -> tuple[np.ndarray, np.ndarray]:
     """((210,8) grid array, (210,) epoch seconds) — the geolocation truth grid."""
-    return (np.load(os.path.join(META, "geolocation.npy")),
-            np.load(os.path.join(META, "grid_times.npy")))
+    return (np.load(os.path.join(_META_DIR, "geolocation.npy")),
+            np.load(os.path.join(_META_DIR, "grid_times.npy")))
 
 
 def timing() -> dict:
-    with open(os.path.join(META, "timing.json")) as f:
+    with open(os.path.join(_META_DIR, "timing.json")) as f:
         return json.load(f)
 
 

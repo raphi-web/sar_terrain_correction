@@ -49,14 +49,20 @@ def scene_extent(dem_path: str, pad_px: int = 0) -> dict:
 
 def write_product(safe: str, dem_path: str, out_path: str, pol: str = "vv",
                   aoi: tuple[int, int, int, int] | None = None,
-                  chunk_rows: int = 512, bands=BANDS, progress: bool = True) -> dict:
+                  chunk_rows: int = 512, bands=BANDS, progress: bool = True,
+                  meta_dir: str | None = None, refresh_meta: bool = False) -> dict:
     """Run the pipeline over an AOI (DEM pixel window) or the whole scene.
 
     aoi = (col0, row0, width, height) in DEM pixels. None -> full scene extent.
+    The meta cache is built or reused automatically for this scene.
     """
     grd, ann, cal_path = safeparse.find_product(safe, pol)
     if cal_path is None:
         raise FileNotFoundError("no calibration XML in this product")
+
+    md = safeparse.ensure_meta(safe, pol, meta_dir=meta_dir, refresh=refresh_meta,
+                              verbose=progress)
+    io.use_meta(md)
 
     if aoi is None:
         ext = scene_extent(dem_path)

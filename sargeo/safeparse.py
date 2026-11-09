@@ -44,6 +44,21 @@ def _strip_ns(root: ET.Element) -> ET.Element:
     return root
 
 
+def _hermite_positions(t, t_orb, p_orb, v_orb):
+    """Cubic Hermite S(t), same basis as sargeo.orbit.position, no meta dependency."""
+    t = np.atleast_1d(np.asarray(t, float))
+    i = np.clip(np.searchsorted(t_orb, t) - 1, 0, len(t_orb) - 2)
+    h = t_orb[i + 1] - t_orb[i]
+    s = (t - t_orb[i]) / h
+    s2, s3 = s * s, s * s * s
+    h00 = 2 * s3 - 3 * s2 + 1
+    h10 = s3 - 2 * s2 + s
+    h01 = -2 * s3 + 3 * s2
+    h11 = s3 - s2
+    return (h00[:, None] * p_orb[i] + h10[:, None] * (h[:, None] * v_orb[i])
+            + h01[:, None] * p_orb[i + 1] + h11[:, None] * (h[:, None] * v_orb[i + 1]))
+
+
 def find_product(safe: str, pol: str = "vv"):
     """Locate (measurement_tiff, annotation_xml, calibration_xml) inside a SAFE.
 
@@ -147,17 +162,20 @@ def prepare_meta(safe: str, out_dir: str | None = None, pol: str = "vv",
     np.save(os.path.join(out_dir, "geolocation.npy"), np.asarray(grid, float))
     np.save(os.path.join(out_dir, "grid_times.npy"), np.asarray(gtimes, float))
 
-    # free sanity check: |S(t) - P| must equal c*tau/2 at every grid point
+    # free sanity check: |S(t) - P| must equal c*tau/2 at every grid point.
+    # Hermite is inlined here on purpose: prepare_meta must not depend on whatever
+    # meta directory sargeo.io happens to have active.
     t_orb = np.array([iso2s(o["time"]) for o in orbit])
     p_orb = np.array([o["pos"] for o in orbit])
+    v_orb = np.array([o["vel"] for o in orbit])
     order = np.argsort(t_orb)
-    t_orb, p_orb = t_orb[order], p_orb[order]
+    t_orb, p_orb, v_orb = t_orb[order], p_orb[order], v_orb[order]
     g = np.asarray(grid, float)
+
     from .ellipsoid import lla2ecef
-    from .orbit import position as _pos  # local import: orbit reads meta itself
 
     P = lla2ecef(g[:, 3], g[:, 4], g[:, 5])
-    S = _pos(np.array(gtimes))
+    S = _hermite_positions(np.array(gtimes), t_orb, p_orb, v_orb)
     r_geom = np.linalg.norm(S - P, axis=1)
     r_meas = C0 * g[:, 0] / 2.0
     resid = r_geom - r_meas
@@ -176,6 +194,57 @@ def prepare_meta(safe: str, out_dir: str | None = None, pol: str = "vv",
         print(f"  orbit {len(orbit)} | grid {len(grid)} | conversion sets {len(conv)}")
         print(f"  range residual vs c*tau/2: max {np.abs(resid).max()*1000:.3f} mm")
     return summary
+
+
+def product_id(safe: str) -> str:
+    """Folder name of the SAFE, without the extension: stable cache key."""
+    base = os.path.basename(os.path.abspath(safe.rstrip("/")))
+    return base[:-5] if base.endswith(".SAFE") else base
+
+
+def default_cache_dir(safe: str, pol: str = "vv") -> str:
+    """Per-scene cache under the user cache dir, so scenes never collide."""
+    root = os.environ.get("SARGEO_CACHE", os.path.join(os.path.expanduser("~"), ".cache", "sargeo"))
+    return os.path.join(root, f"{product_id(safe)}-{pol}")
+
+
+def _stamp_path(d: str) -> str:
+    return os.path.join(d, "source.json")
+
+
+def _cache_ok(d: str, grd: str) -> bool:
+    need = ("s1_meta.json", "geolocation.npy", "grid_times.npy", "timing.json", "source.json")
+    if not all(os.path.isfile(os.path.join(d, f)) for f in need):
+        return False
+    try:
+        st = json.load(open(_stamp_path(d)))
+    except (OSError, ValueError):
+        return False
+    return (st.get("measurement") == os.path.abspath(grd)
+            and st.get("size") == os.path.getsize(grd)
+            and st.get("mtime") == os.path.getmtime(grd))
+
+
+def ensure_meta(safe: str, pol: str = "vv", meta_dir: str | None = None,
+                refresh: bool = False, verbose: bool = True) -> str:
+    """Return a meta directory for this scene, building it if missing or stale."""
+    grd, _, _ = find_product(safe, pol)
+    d = os.path.abspath(meta_dir) if meta_dir else default_cache_dir(safe, pol)
+
+    if not refresh and _cache_ok(d, grd):
+        if verbose:
+            print(f"meta: reusing {d}")
+        return d
+
+    if verbose:
+        print(f"meta: {'rebuilding' if refresh else 'building'} {d}")
+    prepare_meta(safe, d, pol, verbose=verbose)
+    with open(_stamp_path(d), "w") as f:
+        json.dump({"measurement": os.path.abspath(grd),
+                   "size": os.path.getsize(grd),
+                   "mtime": os.path.getmtime(grd),
+                   "pol": pol}, f, indent=1)
+    return d
 
 
 def main(argv=None):
