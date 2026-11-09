@@ -1,8 +1,11 @@
+![Terrain Corrected SAR Image](SAR_dualpol_RGB.jpg)
 # SAR terrain correction from scratch
 
 Turns a Sentinel-1 IW GRD product into an
 orthorectified, radiometrically calibrated, terrain-flattened GeoTIFF. Pure Python,
 NumPy plus rasterio and pyproj, no SNAP, no GAMMA.
+
+
 
 The result can be checked: every S1 product carries a 210-point geolocation grid, and this pipeline
 reproduces it to sub-millimeter range.
