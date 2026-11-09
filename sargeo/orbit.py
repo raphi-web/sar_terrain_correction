@@ -1,27 +1,6 @@
-"""L1 assignment: the orbit.
-
-From the 17 cached ECEF state vectors (sargeo.io.orbit_arrays), implement:
-
-    position(t) -> (..., 3) m      velocity(t) -> (..., 3) m/s
-
-t = scalar or ndarray of Unix epoch seconds; OSVs are 10 s apart, cover scene ±80 s.
-Method is yours. Cubic Hermite on (pos, vel) is the classic (C1 continuous, exact at
-nodes); any other method is fine as long as tests/test_l1_orbit.py stays green —
-it demands the product's own geolocation grid be reproduced to < 0.1 m (reference
-Hermite achieves 0.0002 m, so sloppy interpolation WILL be caught, hehe~).
-
-Return contract (both functions):
-    t scalar  -> np.ndarray of shape (3,)
-    t (N,)    -> np.ndarray of shape (N, 3)
-    dtype float64, C-contiguous; last axis = (x, y, z) ECEF.
-"""
-
 from __future__ import annotations
-
 import numpy as np
-
 from . import io
-
 
 def position(t: float | np.ndarray) -> np.ndarray:
     """Interpolate satellite ECEF position from orbit state vectors.
@@ -110,7 +89,6 @@ def velocity(t: float | np.ndarray) -> np.ndarray:
     is_scalar = np.ndim(t) == 0
     t = np.atleast_1d(t)
     t_orb, p_orb, v_orb = io.orbit_arrays()
-
 
     i = np.searchsorted(t_orb, t) - 1  # find correct orbit segment
     i = np.clip(i, 0, len(t_orb) - 2) # clamp index

@@ -51,11 +51,6 @@ def geocode_tile(lon, lat, h):
 
     # Convert all geographic points into Earth Centered Earth Fixed (ECEF)
     # coordinates.
-    #
-    # SAR orbit positions are given in ECEF coordinates, therefore the
-    # ground points must use the same coordinate system before any geometry
-    # calculations can be performed.
-    #
     # Output:
     #   P = [[X,Y,Z],
     #        [X,Y,Z],
@@ -119,7 +114,7 @@ def geocode_tile(lon, lat, h):
     #             move lo -> mid
     #       else:
     #             move hi -> mid
-    #
+
     for _ in range(60):
         mid = 0.5 * (lo + hi)
         fm = f(mid)
@@ -345,6 +340,7 @@ def run_aoi(
                 y1 - y0
             )
         )
+
     # Sample SAR values at the geocoded positions.
     # line/pixel currently refer to the full SAR image.
     # shift coordinates relative to that window:
