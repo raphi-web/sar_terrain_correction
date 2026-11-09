@@ -157,6 +157,8 @@ $$(S(t) - P)\cdot V(t) = 0$$
 
 so the same spline that positions the satellite also decides when it looked at a given point. Interpolation here is half of the equation that will geolocate every pixel.
 
+One thing worth knowing before we write any code: SNAP does not use Hermite. It interpolates the orbit with an 8 point Lagrange polynomial over the neighbouring state vectors, and it interpolates the tabulated velocities with the same weights instead of differentiating the position curve ([OrbitStateVectors.java](https://github.com/senbox-org/s1tbx/blob/master/s1tbx-commons/src/main/java/org/esa/s1tbx/commons/OrbitStateVectors.java), the method is `getPositionVelocity`). Two reasons I still went with Hermite: it is local, so a query time only needs the two vectors that bracket it, and it uses the velocity as a slope constraint instead of treating it as a second series to be interpolated. The check at the end of this chapter is what decides whether either choice was good enough.
+
 ### Position $S(t)$
 
 First find the 10 second segment that contains our query time.
@@ -223,3 +225,17 @@ Use the spline to place all 210 geolocation points, and compare the geometric ra
 max | |S(t) - P| - c * tau / 2 | = 0.219 mm
 ```
 0.2 millimetres over 800 km, at 210 points. If only the buses for my daily commute were that precise.
+
+## References
+
+Everything here that is not my own measurement comes from these. Numbers in this post come from the run described above; the code and tests are at [github.com/raphi-web/sar_terrain_correction](https://github.com/raphi-web/sar_terrain_correction).
+
+1. **ESA, Sentinel-1 Product Specification** (S1-RS-MDA-52-7441, issue 3.14.1, 2023). The orbit state vectors, the geolocation grid and the coordinate conversion polynomials I parse all come from here. Available from the [SentiWiki product page](https://sentiwiki.copernicus.eu/web/s1-products).
+2. **ESA, SentiWiki: Sentinel-1 mission and products.** Instrument, imaging modes, and what a GRD product actually is. Start at [sentiwiki.copernicus.eu/web/s1-mission](https://sentiwiki.copernicus.eu/web/s1-mission).
+3. **ESA SNAP, [RangeDopplerGeocodingOp.java](https://github.com/senbox-org/s1tbx/blob/master/s1tbx-op-sar-processing/src/main/java/org/esa/s1tbx/sar/gpf/geometric/RangeDopplerGeocodingOp.java).** The operator behind the Terrain Correction module in the SNAP GUI. Reading it is how I found out that the target product grid is built by inverting per output pixel, not by scattering input pixels forward.
+4. **ESA SNAP, [SARGeocoding.java](https://github.com/senbox-org/s1tbx/blob/master/s1tbx-commons/src/main/java/org/esa/s1tbx/commons/SARGeocoding.java).** Zero Doppler time by bisection, slant to ground conversion, and the bistatic delay correction that is skipped for Sentinel-1.
+5. **ESA SNAP, [OrbitStateVectors.java](https://github.com/senbox-org/s1tbx/blob/master/s1tbx-commons/src/main/java/org/esa/s1tbx/commons/OrbitStateVectors.java#L65-L110).** The 8 point Lagrange orbit interpolation that SNAP uses where I used Hermite.
+6. **ESA SNAP operator help, [Range-Doppler Terrain Correction](https://github.com/senbox-org/s1tbx/blob/master/s1tbx-op-sar-processing-ui/src/main/resources/org/esa/s1tbx/sar/docs/operators/RangeDopplerGeocodingOp.html).** What the dialog actually runs, parameter by parameter.
+7. **Copernicus DEM GLO-30.** The elevation model used for the orthorectification in this post. [doi.org/10.5270/ESA-c5d3d65](https://doi.org/10.5270/ESA-c5d3d65).
+8. **Cumming, I. G. and Wong, F. H. (2005).** *Digital Processing of Synthetic Aperture Radar Data: Algorithms and Implementation.* Artech House, ISBN 978-1-58053-058-4. Range Doppler processing, zero Doppler geometry and interpolation, with the derivations I skipped here.
+9. **Curlander, J. C. and McDonough, R. N. (1991).** *Synthetic Aperture Radar: Systems and Signal Processing.* Wiley, ISBN 978-0-471-85770-9. The classic treatment of geocoding and the Doppler centroid.
