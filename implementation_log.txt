@@ -1,0 +1,7 @@
+# implementation_log.txt — Senpai's rationale log (Nagatoro reviews, no comments in code)
+
+2026-11-05 (Nagatoro, recon): COG-schema annotation parsed into meta/ cache; verified
+c*tau/2 reproduces 210-pt geolocation grid to 0.2 mm w/ Hermite OSV interp; r(tau_near)==sr0
+exactly; srgr slope ~= 1/sin(i_near); grid heights ellipsoid-consistent (no geoid in pipeline);
+DEM covers ~full scene (ortho extent 11112x8190 @26 m); disk at 100% (3.8 G free) -> AOI-first,
+uint16 max, no pyramids.

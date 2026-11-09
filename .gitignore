@@ -1,0 +1,19 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.idea/
+.code-graph.json
+.venv/
+venv/
+
+# data and products: never commit these
+*.tif
+*.tiff
+*.SAFE/
+*.zip
+*.npy.tmp
+
+# generated outputs
+figures/_*.tif
+figures/_*.png
+*.aux.xml
