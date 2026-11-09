@@ -1,12 +1,11 @@
 # SAR terrain correction from scratch
 
-Turns a Sentinel-1 IW GRD product, which ships **no georeferencing at all**, into an
+Turns a Sentinel-1 IW GRD product into an
 orthorectified, radiometrically calibrated, terrain-flattened GeoTIFF. Pure Python,
-numpy plus rasterio and pyproj, no SNAP, no GAMMA, no GDAL command line wrappers.
+NumPy plus rasterio and pyproj, no SNAP, no GAMMA.
 
-The interesting part is not that it produces a map. It is that the result can be
-checked: every S1 product carries a 210 point geolocation grid, and this pipeline
-reproduces it to sub-millimetre range.
+The result can be checked: every S1 product carries a 210-point geolocation grid, and this pipeline
+reproduces it to sub-millimeter range.
 
 | Check (against the product's own grid) | Result |
 |---|---|
@@ -15,7 +14,7 @@ reproduces it to sub-millimetre range.
 | Range pixel | **0.0153 px** max |
 | Slant to ground, forward polynomial | **0.0000 m** |
 
-The 0.19 px azimuth residual is the grid's own time quantisation (0.28 ms), not the solver.
+The 0.19 px azimuth residual is the grid's own time quantization (0.28 ms), not the solver.
 
 ## What is implemented
 
@@ -29,7 +28,7 @@ The 0.19 px azimuth residual is the grid's own time quantisation (0.28 ms), not 
 | `sargeo/terrain.py` | DEM surface normals, signed projected incidence, layover and shadow masks (horizon walk) |
 | `sargeo/radiometry.py` | calibration lookup, DN to sigma0, cosine terrain flattening |
 
-Each module has a test file with tolerances measured against the product, not guessed.
+Each module has a test file with tolerances measured against the product.
 
 ## Install
 
