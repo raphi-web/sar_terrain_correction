@@ -80,15 +80,6 @@ stats = ortho.run_aoi("dem.tif", "measurement/....tiff", "out.tif",
                       col0=3500, row0=1800, w=1000, h=1000)
 ```
 
-## Validation numbers, for the curious
-
-- Terrain flattening on a 10 x 10 km Alpine AOI: mean backscatter spread over
-  incidence bins falls from **7.43 dB to 3.50 dB**, correlation with `cos(psi)` from
-  **0.51 to 0.23**.
-- Layover covers 0.5 to 1.8 percent of that area. Shadow is zero, and that is correct:
-  at 34 degree incidence the satellite stands 56 degrees above the horizon, while the
-  26 m DEM peaks near 52 degrees of slope.
-
 ## Known limitations
 
 - Cosine terrain correction only, not the full area based RTC from Small (2011).
@@ -98,11 +89,6 @@ stats = ortho.run_aoi("dem.tif", "measurement/....tiff", "out.tif",
 - No speckle filtering in the products; multi-looking only helps if the output grid is
   also coarsened.
 - Tests are pinned to the included demo scene.
-
-## Related
-
-A Numba accelerated version of the geocoding kernel lives in a separate working copy
-and is not part of this repository.
 
 ## License
 
