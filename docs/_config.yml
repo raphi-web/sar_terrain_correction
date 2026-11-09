@@ -1,4 +1,4 @@
-title: "I am scared of SAR"
+title: "Terrain correcting Sentinel-1 GRD"
 description: "Terrain correcting Sentinel-1 GRD products from scratch, in Python."
 
 theme: minima
