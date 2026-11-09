@@ -40,7 +40,7 @@ Three symbols, and they mean exactly this:
 - $V(t)$ is the satellite velocity at that same instant, in metres per second.
 
 
-$S - P$ points from the ground up to the satellite, so $|S - P|$ is the slant range, 
+$S - P$ points from the ground up to the satellite, so $abs(S - P)$ is the slant range, 
 and $(S - P)\cdot V$ is the rate at which that distance changes. 
 It reaches zero at the closest approach, when the range stops shrinking and starts growing again. 
 That instant is the azimuth time, and it is the coordinate we will spend most of this post chasing.
