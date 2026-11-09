@@ -18,51 +18,6 @@ reproduces it to sub-millimeter range.
 
 The 0.19 px azimuth residual is the grid's own time quantization (0.28 ms), not the solver.
 
-## Known limitations
-- Cosine terrain correction only, not the full area based RTC from Small (2011).
-- No thermal noise removal, no antenna pattern, no TOPS deramping.
-- Ellipsoid heights throughout, no geoid.
-- GRD only: no phase, so no polarimetric decomposition and no interferometry.
-- No speckle filtering in the products; multi-looking only helps if the output grid is
-  also coarsened.
-- Tests are pinned to the included demo scene.
-
-
-## Install
-
-```bash
-python -m venv .venv && . .venv/bin/activate
-pip install -r requirements.txt
-```
-
-
-## Command line
-
-```bash
-python -m sargeo.cli run --safe path/to/S1D_....SAFE \
-                          --dem dem.tif --out product.tif
-
-python -m sargeo.cli run ... --aoi 3500 1800 1000 1000    # DEM pixel window
-python -m sargeo.cli run ... --pol vh                     # other polarisation
-python -m sargeo.cli run ... --meta ./cache --refresh-meta # explicit / forced cache
-```
-
-The parser accepts both the COG layout (no XML namespaces) and older namespaced
-annotations.
-
-`--aoi` is a window in DEM pixels, omit it to process the full scene footprint. 
-
-Output bands are `dn` (orthorectified amplitude), `sigma0` and `gamma0`
-
-## Data
-
-Two inputs, both public:
-
-1. **Sentinel-1 IW GRD** in the COG SAFE layout, from [Copernicus Data Space](https://dataspace.copernicus.eu/).
-   Unzip it so the `.SAFE` folder sits next to `sargeo/`.
-2. **Copernicus DEM GLO-30**, reprojected to the UTM zone of the scene, saved as `dem.tif`.
-
-
 ## What is implemented
 
 | Module | Function |
@@ -80,6 +35,63 @@ Two inputs, both public:
 
 Each module has a test file with tolerances measured against the product.
 
+## Install
+
+```bash
+python -m venv .venv && . .venv/bin/activate
+pip install -r requirements.txt
+```
+
+Python 3.12 or newer. Tested with numpy 2.5, rasterio 1.5, pyproj 3.7.
+
+## Data
+
+Two inputs, both public:
+
+1. **Sentinel-1 IW GRD** in the COG SAFE layout, from [Copernicus Data Space](https://dataspace.copernicus.eu/).
+   Unzip it so the `.SAFE` folder sits next to `sargeo/`.
+2. **Copernicus DEM GLO-30**, reprojected to the UTM zone of the scene, saved as `dem.tif`.
+
+```
+<repo>/
+  dem.tif
+  S1D_IW_GRDH_..._COG.SAFE/
+  meta/            pre-parsed annotation for the demo scene (60 KB)
+  sargeo/
+  tests/
+```
+
+`meta/` holds the orbit, geolocation grid, SRGR coefficients and timing extracted from
+the annotation XML, so the tests run without touching the 1.2 GB measurement files for
+the geometry checks. You normally never build it by hand: `run` creates a per-scene
+cache automatically, keyed by SAFE name and polarisation, under `~/.cache/sargeo/`
+(override with `SARGEO_CACHE` or `--meta`). The cache carries a stamp of the measurement
+file, so a different or modified product rebuilds it instead of silently reusing stale
+geometry.
+
+## Command line
+
+```bash
+# one command: builds the meta cache on first use, reuses it afterwards
+python -m sargeo.cli run --safe path/to/S1D_....SAFE \
+                          --dem dem.tif --out product.tif
+
+python -m sargeo.cli run ... --aoi 3500 1800 1000 1000    # DEM pixel window
+python -m sargeo.cli run ... --pol vh                     # other polarisation
+python -m sargeo.cli run ... --meta ./cache --refresh-meta # explicit / forced cache
+
+# optional: build the cache by itself, e.g. to inspect the range residual
+python prepare_meta.py path/to/S1D_....SAFE
+```
+
+The parser accepts both the COG layout (no XML namespaces) and older namespaced
+annotations, and treats the annotation timestamps as UTC. On every build it prints the
+free physics check `|S(t)-P|` against `c·tau/2` (0.219 mm on the demo scene).
+
+`--aoi` is a window in DEM pixels; omit it to process the full scene footprint. Output
+bands are `dn` (orthorectified amplitude), `sigma0` and `gamma0`, all float32 with NaN
+no-data. Full scene on this product: 11 112 x 8 190 = 91 MP, roughly 25 minutes with
+pure numpy, about 3 GB peak memory thanks to the strip processing.
 
 ## Run the tests
 
@@ -102,6 +114,15 @@ stats = ortho.run_aoi("dem.tif", "measurement/....tiff", "out.tif",
                       col0=3500, row0=1800, w=1000, h=1000)
 ```
 
+## Known limitations
+
+- Cosine terrain correction only, not the full area based RTC from Small (2011).
+- No thermal noise removal, no antenna pattern, no TOPS deramping.
+- Ellipsoid heights throughout, no geoid.
+- GRD only: no phase, so no polarimetric decomposition and no interferometry.
+- No speckle filtering in the products; multi-looking only helps if the output grid is
+  also coarsened.
+- Tests are pinned to the included demo scene.
 
 ## License
 
