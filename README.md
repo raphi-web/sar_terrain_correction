@@ -100,6 +100,12 @@ python tests/test_l6_radiometry.py # 5
 python tests/test_l9_pipeline.py   # 4  (SAFE parser, scene extent, CLI parity)
 ```
 
+Or all at once, from the repo root:
+
+```bash
+python -m pytest
+```
+
 
 ## License
 
