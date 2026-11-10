@@ -2,10 +2,9 @@
 layout: default
 title: "I am scared of SAR"
 permalink: /
+hero: /figures/SAR_dualpol_RGB.jpg
+hero_alt: "SAR Image Generated in this Project"
 ---
-<div class="hero">
-  <img src="figures/SAR_dualpol_RGB.jpg" alt="SAR Image Generated in this Project">
-</div>
 
 # I am scared of SAR 
 

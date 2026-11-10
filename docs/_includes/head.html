@@ -6,16 +6,14 @@
   <link rel="stylesheet" href="{{ "/assets/main.css" | relative_url }}">
   {%- feed_meta -%}
 
-  <!-- Hero image: full viewport width, showing only the middle 40% of the
-       image height (30% clipped top and bottom). 1920 / (1416 * 0.4) = 3.39 -->
+  <!-- Hero image (see _layouts/default.html): full width above the site header,
+       showing only the middle 40% of the image height (30% clipped top and
+       bottom). 1920 / (1416 * 0.4) = 3.39 -->
   <style>
-    html, body { overflow-x: clip; }
     .hero {
-      width: 100vw;
-      margin-left: calc(50% - 50vw);
+      width: 100%;
       aspect-ratio: 1920 / 566.4;
       overflow: hidden;
-      margin-bottom: 1.5em;
     }
     .hero img {
       display: block;
