@@ -19,8 +19,9 @@ def zero_doppler_time(P: np.ndarray) -> float:
     def f(tt):
         return float(np.dot(orbit.position(tt) - P, orbit.velocity(tt)))
 
-    # if D(t) > 0 -> satellite is approaching/passing on side
-    # if D(t) < 0 -> satellite is on the other side
+    # D(t) = 0.5 * d/dt |S(t) - P|^2, so its sign is the sign of the range rate:
+    # if D(t) < 0 -> range shrinking, satellite still approaching P
+    # if D(t) > 0 -> range growing, satellite has passed P
 
     # we are looking for D(t) = (S(t)-P) * V(t) = 0
     # only t is the unknown

@@ -44,14 +44,14 @@ A small orthorectified AOI:
 ```python
 from sargeo import ortho
 
-stats = ortho.run_aoi("dem.tif", "measurement/....tiff", "out.tif",
+stats = ortho.run_aoi("dem_ellipsoidal.tif", "measurement/....tiff", "out.tif",
                       col0=3500, row0=1800, w=1000, h=1000)
 ```
 
 ```bash
 # one command: builds the meta cache on first use, reuses it afterwards
 python -m sargeo.cli run --safe path/to/S1D_....SAFE \
-                          --dem dem.tif --out product.tif
+                          --dem dem_ellipsoidal.tif --out product.tif
 
 python -m sargeo.cli run ... --aoi 3500 1800 1000 1000    # DEM pixel window
 python -m sargeo.cli run ... --pol vh                     # other polarisation
@@ -73,6 +73,7 @@ Two inputs, both public:
 1. **Sentinel-1 IW GRD** in the COG SAFE layout, from [Copernicus Data Space](https://dataspace.copernicus.eu/).
    Unzip it so the `.SAFE` folder sits next to `sargeo/`.
 2. **Copernicus DEM GLO-30**, reprojected to the UTM zone of the scene, saved as `dem.tif`.
+   Then run `python prepare_dem.py` once: it adds the EGM2008 geoid height (about 47 m here) and writes `dem_ellipsoidal.tif`, the DEM the pipeline uses.
 
 ## What is implemented
 

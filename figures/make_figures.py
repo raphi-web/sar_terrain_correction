@@ -235,7 +235,7 @@ db = 20 * np.log10(np.maximum(dn, 1))
 db[dn <= 0] = np.nan          # GRD padding / nodata: paint as background, not black
 vmin, vmax = np.nanpercentile(db, [2, 98])
 
-dem_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dem.tif")
+dem_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dem_ellipsoidal.tif")
 with rasterio.open(dem_path) as ds:
     dem = ds.read(1).astype(np.float32)
     dem[dem == ds.nodata] = np.nan

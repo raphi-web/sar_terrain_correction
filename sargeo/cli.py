@@ -1,7 +1,7 @@
 """Command line entry point.
 
     python -m sargeo.cli prepare-meta --safe <SAFE> [--pol vv] [--out meta]
-    python -m sargeo.cli run --safe <SAFE> --dem dem.tif --out product.tif \
+    python -m sargeo.cli run --safe <SAFE> --dem dem_ellipsoidal.tif --out product.tif \
         [--pol vv] [--aoi COL ROW W H] [--chunk 512]
 """
 from __future__ import annotations

@@ -24,7 +24,7 @@ The exact file I am working with:
 The figure below shows the S1 image on the left and a Digital Elevation Model on the right.
 Notice that the mountains look kinda distorted? That's because of the side-looking nature of SAR. 
 With SAR we are not looking straight down (orthogonal) on the landscape, we are looking from the side. 
-This causes **Layover** and **Foreshortening** effects. My goal is to use the DEM to correct these effects.
+This causes **Foreshortening** effects. My goal is to use the DEM to correct these effects.
 
 ![Uncorrected Image](figures/fig5_scene.png)
 
@@ -77,15 +77,6 @@ Four blocks carry everything I need:
 
 Then the trap that cost me an hour: **all timestamps are UTC, but written without a timezone.** `datetime.fromisoformat()` returns a naive datetime, and `.timestamp()` then reads it as local time. Nothing crashes. The entire scene slides by your UTC offset, and because every timestamp slides together the result still looks perfect on your own machine. It breaks the day somebody in another timezone builds the same cache. I now attach UTC explicitly, and the shipped `meta/` was rebuilt after fixing it.
 
-The reward for parsing carefully is that the product validates itself. Every grid point carries a `slantRangeTime`. Multiply by c/2 and you have a measured range. Interpolate the orbit to the same instant and you have a geometric range. They must agree:
-
-```python
-r_meas = 299_792_458.0 * tau / 2.0        # from the echo delay
-r_geom = np.linalg.norm(S(t_az) - P)      # from the orbit and the ellipsoid
-print(np.abs(r_geom - r_meas).max())      # 0.000219 m
-```
-
-0.2 millimetres, over 210 points and 800 km of range. That number told me the parsing was correct, and that every bug after it would be mine and not the file's.
 All of it goes into a small cache, `meta/`: one JSON with the orbit and the polynomials, one `.npy` for the grid, one for the times. 60 KB, and the tests stop needing 1.2 GB of tiff.
 
 
@@ -121,11 +112,12 @@ P = lla2ecef(lat, lon, h)     # (N, 3) ECEF, metres
 ```
 
 One caveat: the 210 geolocation points carry ellipsoidal heights. 
-The Copernicus DEM carries orthometric heights, roughly 47 m higher than the 
+The Copernicus DEM carries orthometric heights, measured from the EGM2008 geoid, which sits roughly 47 m above the 
 ellipsoid over Austria. Feed those in unchanged and every point lands 47 m low, 
 which shifts it about 67 m horizontally at 35° incidence. 
-That is out of scope for this project, and it explains why a product can be geometrically correct 
-and still sit a couple of pixels off.
+The fix is a one-time conversion: add the geoid height to every DEM pixel. `prepare_dem.py` does that with pyproj and 
+writes `dem_ellipsoidal.tif`, and the geoid height ranges from 44 to 50 m across the scene.
+The SAR image itself agrees: adding a constant offset to the old DEM, the terrain lines up best with the radar at +47 m.
 
 ## Interpolating position and velocity
 
@@ -230,6 +222,76 @@ Use the spline to place all 210 geolocation points, and compare the geometric ra
 max | |S(t) - P| - c * tau / 2 | = 0.219 mm
 ```
 0.2 millimetres over 800 km, at 210 points. If only the buses for my daily commute were that precise.
+
+
+## It's Doppler Time 
+More precisely we need to solve the Doppler equation. For a time $t$ of ground point $P$ we need to find the time when the Doppler equation equals zero. We need this to geolocate a point on the earth with its corresponding SAR image coordinate. 
+
+$$
+(\text{OrbitPosition}(t) - \text{GroundPoint}) \cdot \text{SatelliteVelocity}(t) = 0
+$$
+
+ This is the instant our satellite directly passes by the object. This can be done using bisection in a few lines of code.  
+
+First we define the Doppler equation in a function:
+``` 
+    def f(tt):
+        return float(np.dot(orbit.position(tt) - P, orbit.velocity(tt)))
+```
+
+All we need to do is define a search interval. Since we start here the lower limit is the first orbit-time we got in `t_orb[0]`. The upper limit is the last orbit-time `t_orb[-1]`.
+
+After that we compute our Doppler equation for the lower limit and look at its sign. If $D(t) > 0$ then the ground point has already passed. If $D(t) < 0$ then the ground point is approaching. We calculate a middle point which is just the average between the lower and upper limit and check if the point is between low-mid or mid-high. We can then use these bounds as our new starting points. We do this 60 times in our code, this gives us an accurate estimation where the Doppler equation equals zero.
+
+```
+    lo, hi = float(t_orb[0]), float(t_orb[-1]) # search interval
+    f_lo = f(lo)
+    for _ in range(60):
+        mid = 0.5 * (lo + hi)
+        fm = f(mid)
+        if (fm > 0) == (f_lo > 0):   # mid has the same sign as lo
+            lo, f_lo = mid, fm        # -> root is in [mid, hi]: move lo up
+        else:
+            hi = mid                  # -> root is in [lo, mid]: pull hi down
+    return 0.5 * (lo + hi)
+```
+
+Now that we can find the zero Doppler time we have all the tools needed to transform a point in latitude, longitude and height to SAR Azimuth and Range.
+The next steps are easy convert the lat/lon to ECEF coordinates and find the zero_doppler_time for it.
+```python
+    P = lla2ecef(lat, lon, h) # convert geographic coordinates to earth centered earth fixed
+    t = zero_doppler_time(P) # find when satellite observed the point
+```
+
+Now we can calculate the slant range `np.linalg.norm(orbit.position(t) - P)` this can then be converted to ground range using a Horner polynomial. The coefficients for it are already provided in the metadata.
+
+```
+def slant_to_ground(sr: float | np.ndarray, t_az: float) -> np.ndarray:
+    """
+    converts slant range to ground range
+    gr = P(sr - sr_0)
+    """
+    c = conversion(t_az)  # load conversion parameters
+    sr = np.asarray(sr, dtype=float)
+    x = sr - c["sr0"]  # polynomial has sr0 as origin.  in-swath 0 <= x <= ~166 km
+    v = c["srgr"][-1] # last coefficient in the horner polynomial
+    for a in reversed(c["srgr"][:-1]): # evaluate polynomial
+        v = v * x + a
+
+    gr = v
+    return gr
+```
+Now all we have to do is to convert the ground range to pixels in order to get the column of our raster image. The metadata also provides a lookup here.
+```
+    tim = io.timing() # load timing metadata
+    line = (t - tim["t0"]) / tim["dt_az"]
+```
+
+**And tada, we can now convert any Point to our Radar Coordinates** 
+
+
+
+
 
 ## References
 

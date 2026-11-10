@@ -4,7 +4,7 @@
 **Scene:** S1D IW **GRD** VV/VH, 2026-10-31T16:50:04Z, **ascending**, absolute orbit 5262, NRT-3h,
 COG-format SAFE (new ESA schema — the tiff has NO georeferencing, all geology comes from metadata).
 **Area:** Austria — scene bbox (EPSG:32633) E 385642–674883, N 5073954–5287134 (~289×213 km).
-**DEM:** `dem.tif`, EPSG:32633, 11278×8263 @ 26.03 m, float32, nodata −9999.
+**DEM:** `dem.tif`, EPSG:32633, 11278×8263 @ 26.03 m, float32, nodata −9999. Pipeline uses `dem_ellipsoidal.tif` (= `dem.tif` + EGM2008 N, 44.0–50.4 m; `prepare_dem.py`).
 
 **Metadata cache (pre-parsed, `meta/`):**
 - `s1_meta.json` — product/image info, 17 ECEF state vectors, 28 SRGR/GRSR polynomial sets, WGS84, terrainHeight, calibration
@@ -31,7 +31,7 @@ COG-format SAFE (new ESA schema — the tiff has NO georeferencing, all geology 
 **Course complete: L1–L6 all green.** Remaining: Numba pass, full-scene run, blog.
 
 ## Out of scope (explicit)
-TOPS burst overlap/deramping; geoid modeling (ellipsoid heights all the way); thermal noise, antenna pattern/RAVG; polarimetry; coregistration; multitemporal anything.
+TOPS burst overlap/deramping; geoid modeling beyond the one-time EGM2008 DEM conversion; thermal noise, antenna pattern/RAVG; polarimetry; coregistration; multitemporal anything.
 
 ## Post-course (after L6): performance pass
 

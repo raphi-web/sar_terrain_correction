@@ -21,7 +21,7 @@ GRD = os.path.join(SAFE, "measurement",
                    "s1d-iw-grd-vv-20261031t165004-20261031t165029-005262-00a00b-001-cog.tiff")
 CAL = os.path.join(SAFE, "annotation", "calibration",
                    "calibration-s1d-iw-grd-vv-20261031t165004-20261031t165029-005262-00a00b-001-cog.xml")
-DEM = os.path.join(ROOT, "dem.tif")
+DEM = os.path.join(ROOT, "dem_ellipsoidal.tif")
 COL0, ROW0, W, H = 3500, 1800, 400, 400
 
 d = rad.run_aoi(DEM, GRD, CAL, COL0, ROW0, W, H)

@@ -31,7 +31,7 @@ GRD = os.path.join(
     "measurement",
     "s1d-iw-grd-vv-20261031t165004-20261031t165029-005262-00a00b-001-cog.tiff",
 )
-DEM = os.path.join(ROOT, "dem.tif")
+DEM = os.path.join(ROOT, "dem_ellipsoidal.tif")
 
 
 def test_normals_flat_dem():

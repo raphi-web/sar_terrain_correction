@@ -19,7 +19,7 @@ SAFE = os.path.join(
     ROOT,
     "S1D_IW_GRDH_1SDV_20261031T165004_20261031T165029_005262_00A00B_5EE3_COG.SAFE",
 )
-DEM = os.path.join(ROOT, "dem.tif")
+DEM = os.path.join(ROOT, "dem_ellipsoidal.tif")
 
 
 def test_find_product_both_polarisations():
