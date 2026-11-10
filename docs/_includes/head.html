@@ -23,6 +23,8 @@
       object-fit: cover;
       object-position: center;
     }
+    /* Minima's dark top border on the header would sit right under the hero */
+    .site-header { border-top: none; }
   </style>
   {%- if jekyll.environment == 'production' and site.google_analytics -%}
     {%- include google-analytics.html -%}
