@@ -237,32 +237,43 @@ vmin, vmax = np.nanpercentile(db, [2, 98])
 
 dem_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "dem.tif")
 with rasterio.open(dem_path) as ds:
-    dem = ds.read(1, out_shape=(800, 1092), resampling=Resampling.bilinear).astype(float)
-    bounds = ds.bounds
+    dem = ds.read(1).astype(np.float32)
+    dem[dem == ds.nodata] = np.nan
+    dem_tf, dem_crs = ds.transform, ds.crs
 gy, gx = np.gradient(dem, 26.03)
 slope = np.arctan(np.hypot(gx, gy))
 aspect = np.arctan2(-gx, gy)
 az, alt = np.radians(315), np.radians(45)
 hs = np.sin(alt) * np.cos(slope) + np.cos(alt) * np.sin(slope) * np.cos(az - aspect)
 
-fig, ax = plt.subplots(1, 2, figsize=(11.5, 4.6))
-ax[0].imshow(db, cmap="gray", vmin=vmin, vmax=vmax, extent=[0, nsamp, nlines, 0])
-ax[0].set_facecolor(BG)
-ax[0].scatter(G[:, PIX], G[:, LINE], s=6, color=C2, alpha=0.85, label="geolocation grid")
-ax[0].set_title("L0 · Sentinel-1 IW GRD VV, DN (dB)")
-ax[0].set_xlabel("range pixel"); ax[0].set_ylabel("azimuth line")
-ax[0].legend(loc="lower right", fontsize=8)
-ax[0].grid(False)
+# Put the DEM into the SAR image's own grid, so both panels cover exactly the
+# same ground: the geolocation grid (10 lines x 21 pixels) gives lat/lon per
+# (line, pixel); interpolate it to every display pixel, go to UTM, sample.
+from scipy.interpolate import RegularGridInterpolator
+from scipy.ndimage import map_coordinates
+g_lines, g_pix = np.unique(G[:, LINE]), np.unique(G[:, PIX])
+order = np.lexsort((G[:, PIX], G[:, LINE]))
+lat_g = G[order, LAT].reshape(len(g_lines), len(g_pix))
+lon_g = G[order, LON].reshape(len(g_lines), len(g_pix))
+ll, pp = np.meshgrid((np.arange(h) + 0.5) * nlines / h, (np.arange(w) + 0.5) * nsamp / w, indexing="ij")
+q = np.column_stack([ll.ravel(), pp.ravel()])
+lat_q = RegularGridInterpolator((g_lines, g_pix), lat_g, bounds_error=False, fill_value=None)(q)
+lon_q = RegularGridInterpolator((g_lines, g_pix), lon_g, bounds_error=False, fill_value=None)(q)
+e, n = Transformer.from_crs("EPSG:4326", dem_crs, always_xy=True).transform(lon_q, lat_q)
+col, row = ~dem_tf * (e, n)
+hs_sar = map_coordinates(hs, [row - 0.5, col - 0.5], order=1, cval=np.nan).reshape(h, w)
+hs_sar[np.isnan(db)] = np.nan   # same padding mask as the SAR panel
 
-ax[1].imshow(hs, cmap="gray", extent=[bounds.left, bounds.right, bounds.bottom, bounds.top])
-ax[1].set_title("L0 · DEM (26 m) with scene footprint")
-ax[1].set_xlabel("UTM 33N easting [m]"); ax[1].set_ylabel("northing [m]")
-ax[1].ticklabel_format(useOffset=False, style="plain")
-ax[1].grid(False)
-foot = dict(left=385_642, right=674_883, bottom=5_073_954, top=5_287_134)
-ax[1].plot([foot["left"], foot["right"], foot["right"], foot["left"], foot["left"]],
-           [foot["bottom"], foot["bottom"], foot["top"], foot["top"], foot["bottom"]],
-           color=C2, lw=1.4)
+# Line 0 is the southern edge (ascending pass) and range runs west to east,
+# so flipping the lines gives a roughly north-up view for both panels.
+fig, ax = plt.subplots(1, 2, figsize=(11.5, 3.9))
+ax[0].imshow(db[::-1], cmap="gray", vmin=vmin, vmax=vmax)
+ax[0].set_title("Sentinel-1 IW GRD VV (dB)")
+ax[1].imshow(hs_sar[::-1], cmap="gray", vmin=np.nanpercentile(hs_sar, 2), vmax=np.nanpercentile(hs_sar, 98))
+ax[1].set_title("Copernicus DEM hillshade, same footprint")
+for a in ax:
+    a.set_facecolor(BG)
+    a.set_axis_off()
 fig.tight_layout()
 fig.savefig(os.path.join(OUT, "fig5_scene.png"), bbox_inches="tight")
 plt.close(fig)
