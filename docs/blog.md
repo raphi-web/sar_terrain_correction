@@ -244,23 +244,23 @@ All we need to do is define a search interval. Since we start here the lower lim
 After that we compute our Doppler equation for the lower limit and look at its sign. If $D(t) > 0$ then the ground point has already passed. If $D(t) < 0$ then the ground point is approaching. We calculate a middle point which is just the average between the lower and upper limit and check if the point is between low-mid or mid-high. We can then use these bounds as our new starting points. We do this 60 times in our code, this gives us an accurate estimation where the Doppler equation equals zero.
 
 ```
-    lo, hi = float(t_orb[0]), float(t_orb[-1]) # search interval
-    f_lo = f(lo)
-    for _ in range(60):
+lo, hi = float(t_orb[0]), float(t_orb[-1]) # search interval
+f_lo = f(lo)
+for _ in range(60):
         mid = 0.5 * (lo + hi)
         fm = f(mid)
         if (fm > 0) == (f_lo > 0):   # mid has the same sign as lo
             lo, f_lo = mid, fm        # -> root is in [mid, hi]: move lo up
         else:
             hi = mid                  # -> root is in [lo, mid]: pull hi down
-    return 0.5 * (lo + hi)
+return 0.5 * (lo + hi)
 ```
 
 Now that we can find the zero Doppler time we have all the tools needed to transform a point in latitude, longitude and height to SAR Azimuth and Range.
 The next steps are easy convert the lat/lon to ECEF coordinates and find the zero_doppler_time for it.
 ```python
-    P = lla2ecef(lat, lon, h) # convert geographic coordinates to earth centered earth fixed
-    t = zero_doppler_time(P) # find when satellite observed the point
+P = lla2ecef(lat, lon, h) # convert geographic coordinates to earth centered earth fixed
+t = zero_doppler_time(P) # find when satellite observed the point
 ```
 
 Now we can calculate the slant range `np.linalg.norm(orbit.position(t) - P)` this can then be converted to ground range using a Horner polynomial. The coefficients for it are already provided in the metadata.
@@ -283,8 +283,8 @@ def slant_to_ground(sr: float | np.ndarray, t_az: float) -> np.ndarray:
 ```
 Now all we have to do is to convert the ground range to pixels in order to get the column of our raster image. The metadata also provides a lookup here.
 ```
-    tim = io.timing() # load timing metadata
-    line = (t - tim["t0"]) / tim["dt_az"]
+tim = io.timing() # load timing metadata
+line = (t - tim["t0"]) / tim["dt_az"]
 ```
 
 **And tada, we can now convert any Point to our Radar Coordinates** 
