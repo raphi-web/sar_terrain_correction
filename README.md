@@ -5,6 +5,8 @@ Turns a Sentinel-1 IW GRD product into an
 orthorectified, radiometrically calibrated, terrain-flattened GeoTIFF. Pure Python,
 NumPy plus rasterio and pyproj, no SNAP, no GAMMA.
 
+See the blog: https://raphi-web.github.io/sar_terrain_correction/
+
 | Check (against the product's own grid) | Result |
 |---|---|
 | Slant range | **0.2 mm** max |
