@@ -3,7 +3,10 @@ layout: default
 title: "I am scared of SAR"
 permalink: /
 ---
-![SAR Image Generated in this Project](figures/SAR_dualpol_RGB.jpg)
+<div class="hero">
+  <img src="figures/SAR_dualpol_RGB.jpg" alt="SAR Image Generated in this Project">
+</div>
+
 # I am scared of SAR 
 
 And I wanted to change that. So I picked an over-the-top exercise that gave me a few headaches along the way. But I learned a lot, and it did make Synthetic Aperture Radar less scary.

@@ -5,6 +5,27 @@
   {%- seo -%}
   <link rel="stylesheet" href="{{ "/assets/main.css" | relative_url }}">
   {%- feed_meta -%}
+
+  <!-- Hero image: full viewport width, showing only the middle 40% of the
+       image height (30% clipped top and bottom). 1920 / (1416 * 0.4) = 3.39 -->
+  <style>
+    html, body { overflow-x: clip; }
+    .hero {
+      width: 100vw;
+      margin-left: calc(50% - 50vw);
+      aspect-ratio: 1920 / 566.4;
+      overflow: hidden;
+      margin-bottom: 1.5em;
+    }
+    .hero img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      max-width: none;
+      object-fit: cover;
+      object-position: center;
+    }
+  </style>
   {%- if jekyll.environment == 'production' and site.google_analytics -%}
     {%- include google-analytics.html -%}
   {%- endif -%}
