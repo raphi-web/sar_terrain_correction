@@ -35,8 +35,6 @@ Everything in this post comes down to solving one equation:
 
 $$(S(t) - P)\cdot V(t) = 0$$
 
-Three symbols, and they mean exactly this:
-
 - $S(t)$ is where the satellite is at time $t$, a position in metres.
 - $P$ is the ground point we are curious about. Also a position in metres.
 - $V(t)$ is the satellite velocity at that same instant, in metres per second.
