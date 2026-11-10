@@ -1,4 +1,4 @@
-![Terrain Corrected SAR Image](SAR_dualpol_RGB.jpg)
+![Terrain Corrected SAR Image](docs/figures/SAR_dualpol_RGB.jpg)
 # SAR terrain correction from scratch
 
 Turns a Sentinel-1 IW GRD product into an

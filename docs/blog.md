@@ -3,16 +3,16 @@ layout: default
 title: "I am scared of SAR"
 permalink: /
 ---
-
+![SAR Image Generated in this Project](figures/SAR_dualpol_RGB.jpg)
 # I am scared of SAR 
 
-And I wanted to change that. For that I picked an over the top exercise that cost me some headache along the way. But I did learn and it did make Synthetic Aperture radar less scary.
+And I wanted to change that. So I picked an over-the-top exercise that gave me a few headaches along the way. But I learned a lot, and it did make Synthetic Aperture Radar less scary.
 **So let me show you how you can terrain correct your own Sentinel-1 GRD products from scratch using Python, NumPy and Rasterio!**
 
 ## Why do we need terrain correction anyway?
 
 The scene I am working with is an ascending orbit Sentinel-1 GRD product, downloaded from ESA Copernicus.
-GRD means that the radar is already projected onto a flat Earth ellipsoid model (WGS84). 
+GRD means that the radar image is already projected onto the WGS84 ellipsoid, a smooth Earth with no terrain on it.
 It has also been multi-looked, which means adjacent pixels were averaged together to smooth out speckle noise.  
 
 
@@ -40,16 +40,14 @@ Three symbols, and they mean exactly this:
 - $V(t)$ is the satellite velocity at that same instant, in metres per second.
 
 
-$S - P$ points from the ground up to the satellite, so $abs(S - P)$ is the slant range, 
+$S - P$ points from the ground up to the satellite, so $\lVert S - P \rVert$ is the slant range, 
 and $(S - P)\cdot V$ is the rate at which that distance changes. 
 It reaches zero at the closest approach, when the range stops shrinking and starts growing again. 
 That instant is the azimuth time, and it is the coordinate we will spend most of this post chasing.
 
-SAR does not have the classical X, Y coordinates. We work with azimuth and range¹.
+SAR does not have the classical X, Y coordinates. We work with azimuth and range.[^ranges]
 
-¹For a flat terrain there are actually two ranges:
-- Slant Range: the straight line from object to radar antenna (what actually gets measured)
-- Ground Range: the horizontal distance from the nadir
+[^ranges]: For flat terrain there are actually two ranges. **Slant range** is the straight line from the object to the radar antenna, and it is what actually gets measured. **Ground range** is the horizontal distance from the nadir.
 
 Azimuth really is a time, not a distance. In a naive sense it is the time the Doppler equation equals zero.
 Range is the distance from the antenna to the target, obtained from the delay of the echo. 
@@ -60,7 +58,7 @@ Range is the distance from the antenna to the target, obtained from the delay of
 
 ## Parsing the XML
 
-A SAFE folder is mostly XML. The measurement tiff holds the numbers, the annotation holds everything that gives those numbers a position.
+By size, a SAFE folder is mostly one big tiff, but the information lives in the XML. The measurement tiff holds the numbers, and the annotation holds everything that gives those numbers a position.
 
 ```
 S1D_..._COG.SAFE/
@@ -91,16 +89,16 @@ print(np.abs(r_geom - r_meas).max())      # 0.000219 m
 All of it goes into a small cache, `meta/`: one JSON with the orbit and the polynomials, one `.npy` for the grid, one for the times. 60 KB, and the tests stop needing 1.2 GB of tiff.
 
 
-## Unit Conversion Time, what fun
+## Coordinate Conversion Time, what fun
 
 We start with `ellipsoid.py`, because everything later needs the same thing: a ground point expressed as a vector in the frame the orbit already uses.
 
-The `orbitList` from the annotation is already in ECEF, Earth Centred Earth Fixed, in metres. Our DEM is not. It speaks UTM easting and northing plus a height, so it has to be converted before anything can be compared: UTM → lon/lat → ECEF.
+The `orbitList` from the annotation is already in ECEF, Earth Centred Earth Fixed, in metres. Our DEM is not. It speaks UTM easting and northing plus a height, so it has to be converted before anything can be compared: UTM → lon/lat → ECEF. The first step is a pyproj `Transformer`. The second one I wrote myself, and it starts with the WGS84 ellipsoid:
 
 $$a = 6\,378\,137\ \text{m}, \qquad b = 6\,356\,752.314\ \text{m}, \qquad e^{2} = 1 - \frac{b^{2}}{a^{2}}$$
 
 
-The radius of curvature in the prime vertical, which is a length of about 6.4 million metres. 
+From those we get $N$, the radius of curvature in the prime vertical, a length of about 6.4 million metres:
 
 $$N(\varphi) = \frac{a}{\sqrt{1 - e^{2}\sin^{2}\varphi}}$$
 
@@ -112,7 +110,7 @@ $$y = (N + h)\cos\varphi\sin\lambda$$
 
 $$z = \big(N(1 - e^{2}) + h\big)\sin\varphi$$
 
-with latitude $\varphi$, longitude $\lambda$, and $h$ the **ellipsoidal** height, all in metres.
+with latitude $\varphi$, longitude $\lambda$, and $h$ the **ellipsoidal** height in metres.
 
 The $N$ in $x$ and $y$, but $N(1-e^{2})$ in $z$: geodetic latitude is defined by the surface normal, and on a squashed ellipsoid that normal does not pass through the centre. Get it wrong and the point lands consistently wrong, which is the worst kind of geodesy bug, because nothing crashes and the picture still looks fine.
 
