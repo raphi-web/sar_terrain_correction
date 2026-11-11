@@ -26,7 +26,7 @@ COG-format SAFE (new ESA schema — the tiff has NO georeferencing, all geology 
 | L3 ✅ | Range-Doppler geolocation | **DONE 2026-11-06** — Senpai's bisection on (S−P)·V + `geolocate()` | 5/5 green; line 0.191 px, pixel 0.0153 px, range 0.0002 m |
 | L4 ✅ | Ortho driver | **DONE 2026-11-06** — Senpai's vectorized `geocode_tile` + `sample_bilinear`; `run_aoi` writes GeoTIFF | 4/4 green; 1000×1000 AOI in 27 s; ridges align with DEM hillshade |
 | L5 ✅ | Local incidence + layover/shadow | **DONE 2026-11-06** — Senpai's `surface_normals` + signed ψ + `horizon_masks` | 6/6 green; ψ vs grid 0.037°; synthetic wall; real layover 0.46–1.82 %, shadow 0 % (56° elevation, 52° max slope) |
-| L6 ✅ | Radiometry | **DONE 2026-11-06** — Senpai's `calibration_at` (searchsorted + gather), DN→σ0, `flatten`, `to_db` | 5/5 green; AOI median −11.3 dB; spread 7.43→3.50 dB, corr 0.51→0.23; figure fig9 |
+| L6 ✅ | Radiometry | **DONE 2026-11-06** — Senpai's `calibration_at` (searchsorted + gather), DN→σ0, `flatten`, `to_db` | 5/5 green; AOI median −11.0 dB; spread 9.18→5.90 dB, corr 0.67→0.46 (geoid-corrected DEM, limits retuned 2026-11-10; was 7.43→3.50, 0.51→0.23 on the uncorrected DEM); figure fig9 |
 
 **Course complete: L1–L6 all green.** Remaining: Numba pass, full-scene run, blog.
 

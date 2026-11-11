@@ -58,7 +58,7 @@ Range is the distance from the antenna to the target, obtained from the delay of
 
 ## Parsing the XML
 
-By size, a SAFE folder is mostly one big tiff, but the information lives in the XML. The measurement tiff holds the numbers, and the annotation holds everything that gives those numbers a position.
+A SAFE folder is mostly one big tiff, but the information lives in the XML. The measurement tiff holds the numbers, and the annotation gives the position.
 
 ```
 S1D_..._COG.SAFE/
@@ -75,16 +75,13 @@ Four blocks carry everything I need:
 - `coordinateConversionList`: 28 polynomial sets mapping slant range to ground range, one per second of azimuth time
 - `geolocationGridPointList`: 210 points with latitude, longitude, height, line, pixel and incidence. ESA ships them for calibration. I use them as a test suite.
 
-Then the trap that cost me an hour: **all timestamps are UTC, but written without a timezone.** `datetime.fromisoformat()` returns a naive datetime, and `.timestamp()` then reads it as local time. Nothing crashes. The entire scene slides by your UTC offset, and because every timestamp slides together the result still looks perfect on your own machine. It breaks the day somebody in another timezone builds the same cache. I now attach UTC explicitly, and the shipped `meta/` was rebuilt after fixing it.
-
-All of it goes into a small cache, `meta/`: one JSON with the orbit and the polynomials, one `.npy` for the grid, one for the times. 60 KB, and the tests stop needing 1.2 GB of tiff.
-
+I extracted the data from the XML files into a small cache `meta/`. This holds the orbit and polynomials. 
 
 ## Coordinate Conversion Time, what fun
 
 We start with `ellipsoid.py`, because everything later needs the same thing: a ground point expressed as a vector in the frame the orbit already uses.
 
-The `orbitList` from the annotation is already in ECEF, Earth Centred Earth Fixed, in metres. Our DEM is not. It speaks UTM easting and northing plus a height, so it has to be converted before anything can be compared: UTM → lon/lat → ECEF. The first step is a pyproj `Transformer`. The second one I wrote myself, and it starts with the WGS84 ellipsoid:
+The `orbitList` from the annotation is already in ECEF, Earth Centred Earth Fixed, in metres. Our DEM is not. It's in UTM , so it has to be converted: UTM → lon/lat → ECEF. The first step is a pyproj `Transformer`. The second one I wrote myself, and it starts with the WGS84 ellipsoid:
 
 $$a = 6\,378\,137\ \text{m}, \qquad b = 6\,356\,752.314\ \text{m}, \qquad e^{2} = 1 - \frac{b^{2}}{a^{2}}$$
 
@@ -235,8 +232,8 @@ $$
 
 First we define the Doppler equation in a function:
 ``` 
-    def f(tt):
-        return float(np.dot(orbit.position(tt) - P, orbit.velocity(tt)))
+def f(tt):
+    return float(np.dot(orbit.position(tt) - P, orbit.velocity(tt)))
 ```
 
 All we need to do is define a search interval. Since we start here the lower limit is the first orbit-time we got in `t_orb[0]`. The upper limit is the last orbit-time `t_orb[-1]`.
@@ -289,6 +286,7 @@ line = (t - tim["t0"]) / tim["dt_az"]
 
 **And tada, we can now convert any Point to our Radar Coordinates** 
 
+## Aligning the SAR image with the DEM
 
 
 
