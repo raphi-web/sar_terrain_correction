@@ -79,8 +79,7 @@ I extracted the data from the XML files into a small cache `meta/`. This holds t
 
 ## Coordinate Conversion Time, what fun
 
-We start with `ellipsoid.py`, because everything later needs the same thing: a ground point expressed as a vector in the frame the orbit already uses.
-
+We start with `ellipsoid.py`, because we have to work vectors not latitude and longitude. 
 The `orbitList` from the annotation is already in ECEF, Earth Centred Earth Fixed, in metres. Our DEM is not. It's in UTM , so it has to be converted: UTM → lon/lat → ECEF. The first step is a pyproj `Transformer`. The second one I wrote myself, and it starts with the WGS84 ellipsoid:
 
 $$a = 6\,378\,137\ \text{m}, \qquad b = 6\,356\,752.314\ \text{m}, \qquad e^{2} = 1 - \frac{b^{2}}{a^{2}}$$
