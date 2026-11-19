@@ -434,8 +434,7 @@ line, pixel = geocode_tile(
 
 ok = np.isfinite(line) & np.isfinite(pixel)
 ```
-
-Now it's time to sample the SAR image at those positions. I will show the actual reading at the end of this chapter. What matters here is that instead of snapping every point to its nearest SAR pixel, I chose bilinear interpolation.
+It's time to sample the SAR image at those positions. What matters here is that instead of snapping every point to its nearest SAR pixel, I chose bilinear interpolation.
 
 ```python
 def sample_bilinear(dn, line, pixel, nodata=0.0):
