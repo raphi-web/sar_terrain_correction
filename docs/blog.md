@@ -322,7 +322,7 @@ Just like in the scalar version, the answer is the middle of the final bracket:
 t = 0.5 * (lo + hi)
 ```
 
-60 iterations halve the orbit interval by 2^60 — far beyond what float64 can resolve so the bracket collapses to machine precision after ~30 steps. `t` is now the zero-Doppler acquisition time for every DEM pixel, one vectorized stroke instead of a loop over millions of points.
+60 iterations halve the orbit interval by 2^60 that's far beyond what float64 can resolve so the bracket collapses to machine precision after ~30 steps. `t` is now the zero-Doppler acquisition time for every DEM pixel, one vectorized stroke instead of a loop over millions of points.
 
 ## References
 
