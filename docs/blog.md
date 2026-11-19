@@ -230,7 +230,7 @@ $$
  This is the instant our satellite directly passes by the object. This can be done using bisection in a few lines of code.  
 
 First we define the Doppler equation in a function:
-``` 
+```python
 def f(tt):
     return float(np.dot(orbit.position(tt) - P, orbit.velocity(tt)))
 ```
@@ -323,6 +323,181 @@ t = 0.5 * (lo + hi)
 ```
 
 60 iterations halve the orbit interval by 2^60 that's far beyond what float64 can resolve so the bracket collapses to machine precision after ~30 steps. `t` is now the zero-Doppler acquisition time for every DEM pixel, one vectorized stroke instead of a loop over millions of points.
+
+
+
+**And with this we can compute slant range and ground range:**
+
+```python
+# Compute slant range.
+S = orbit.position(t)
+r = np.linalg.norm(S - P, axis=1)
+
+# Convert slant range -> ground range.
+T, sets = io.conversions()
+sr0 = np.array([s["sr0"] for s in sets])
+C = np.array([s["srgr"] for s in sets])
+
+# Find nearest conversion time independently for every pixel.
+idx = np.argmin(np.abs(T[None, :] - t[:, None]), axis=1)
+
+# Shift the range origin for numerical stability.
+x = r - sr0[idx]
+```
+
+With our orbit position `S` the difference vector `S-P` gives the slant range `r`. The metadata provides the ground range polynomial at discrete azimuth times, and we pick the nearest set in time for every pixel; interpolating coefficients between sets would only interpolate fit noise. The shift by `sr0` is for numerical stability, the polynomial is built around `x = r - sr0`, not around `r`. The evaluation of the polynomial terms for all our pixels is a simple for-loop.
+
+```python
+gr = np.zeros_like(x)
+for i in range(9):
+    gr += C[idx, i] * x ** i
+```
+
+At the finish line of our vectorized geocode function we have to convert the physical coordinates into SAR image coordinates. We subtract the image start time from the acquisition time and divide by the time between lines. The ground range is on a 10 m grid, so the pixel index is `gr / 10`:
+
+```python
+#       line = (acquisition_time - image_start_time)
+#              / time_between_lines
+#       pixel = ground_range / 10 m
+
+tim = io.timing()
+
+line = (t - tim["t0"]) / tim["dt_az"]
+pixel = gr / 10.0
+
+return line, pixel
+```
+
+And that's it, our super fast geolocation is implemented.
+
+## Writing the GeoTIFF
+We are almost done, I promise! We have to define a function that brings everything together. Our result will be a terrain-corrected GeoTIFF.
+We point this function at an elevation model GeoTIFF and our Sentinel-1 GRD file. We can give `col0`, `row0` as the start column and row indexes for the area of interest, as well as `w` and `h` in pixels.
+
+```python
+def run_aoi(
+    dem_path: str,
+    grd_path: str,
+    out_path: str,
+    col0: int,
+    row0: int,
+    w: int,
+    h: int,
+    nodata: int = 0
+) -> dict:
+```
+
+Reading the DEM is easy thanks to rasterio. Note that `window_transform` returns the transform of the AOI window itself, origin included, so everything downstream is window-relative:
+
+```python
+with rasterio.open(dem_path) as ds:
+    win = Window(col0, row0, w, h)
+    dem = ds.read(1, window=win).astype(float)
+    transform = ds.window_transform(win)
+    crs = ds.crs
+```
+
+We need the center coordinates of our pixels because the geometry lives at pixel centers, not corners, so we add `0.5` to our row and column indices. The columns `[0, 1, 2, ...]` become `[0.5, 1.5, 2.5, ...]`.
+
+```python
+cols = np.arange(w) + 0.5
+rows = np.arange(h) + 0.5
+```
+
+And now with the transform parameters we can get Easting and Northing.
+
+```python
+E = transform.c + cols * transform.a
+N = transform.f + rows * transform.e
+EE, NN = np.meshgrid(E, N)
+
+tf = Transformer.from_crs(
+    crs,
+    "EPSG:4326",
+    always_xy=True
+)
+
+lon, lat = tf.transform(
+    EE.ravel(),
+    NN.ravel()
+)
+```
+
+We convert whatever CRS our DEM has to EPSG:4326, WGS84, because the orbit and the ECEF math live in geographic coordinates. **And now it's time for our geolocation function**: the DEM pixels' latitude, longitude and height give us the line number and pixel of the SAR image where each ground point was observed. Then we keep a mask of where we actually have valid numbers.
+
+```python
+line, pixel = geocode_tile(
+    lon,
+    lat,
+    dem.ravel()
+)
+
+ok = np.isfinite(line) & np.isfinite(pixel)
+```
+
+Now it's time to sample the SAR image at those positions. I will show the actual reading at the end of this chapter. What matters here is that instead of snapping every point to its nearest SAR pixel, I chose bilinear interpolation.
+
+```python
+def sample_bilinear(dn, line, pixel, nodata=0.0):
+    # perform bilinear interpolation of sar to dem grid
+    hh, ww = dn.shape
+    l0 = np.floor(line).astype(np.int64)       # row above
+    p0 = np.floor(pixel).astype(np.int64)      # column left
+    dl = line - l0                             # 0..1 down the cell
+    dp = pixel - p0                            # 0..1 across the cell
+
+    ok = (l0 >= 0) & (l0 + 1 < hh) & (p0 >= 0) & (p0 + 1 < ww)
+    l0c = np.clip(l0, 0, hh - 2)               # safe indices for the gather
+    p0c = np.clip(p0, 0, ww - 2)
+
+    v00 = dn[l0c, p0c].astype(float)           # top-left
+    v01 = dn[l0c, p0c + 1].astype(float)       # top-right
+    v10 = dn[l0c + 1, p0c].astype(float)       # bottom-left
+    v11 = dn[l0c + 1, p0c + 1].astype(float)   # bottom-right
+
+    out = (v00 * (1 - dl) * (1 - dp) + v01 * (1 - dl) * dp +
+           v10 * dl * (1 - dp) + v11 * dl * dp)
+    out[~ok] = nodata
+    return out
+```
+
+The interpolation follows the same vectorized idea as the geocoding:  he first line, `hh, ww = dn.shape`, just unpacks the shape of our SAR chip so we know where the borders are.  Every geocoded point lands inside one cell of the SAR grid, say `line = 3452.7` and `pixel = 912.4`. `l0` and `p0` floor those coordinates to the row above and the column left, the corners of the 2x2 block around the point. `dl = 0.7` and `dp = 0.4` say how far down and how far across the point sits inside that block.
+
+The value is the weighted average of the four corners. Each corner gets the product of the complementary fractions: `v00` gets `(1-dl)*(1-dp)`, `v10` gets `dl*(1-dp)`, and so on. The corner closest to the sample point always carries the largest weight, at `dl = dp = 0` the result is exactly `v00`, and the four weights always sum to 1. So the interpolated value can never fall outside the range of its four neighbours.
+
+The four `dn[...]` lookups are the numpy trick. Fancy indexing with paired index arrays grabs one element per output pixel, `dn[l0c[i], p0c[i]]`, all at once. Two arrays index *pairs*.
+
+Sample is valid only when the full 2x2 block lies inside the image. Negative or NaN coordinates would explode the indexing, so we clip them into the valid range, gather safely, and then `out[~ok] = nodata` overwrites the junk.
+
+The GRD is tens of thousands of lines long while our DEM tile only touches a tilted strip of it, so `run_aoi` computes the bounding box of the geocoded footprint and reads exactly that window:
+
+```python
+y0 = max(int(np.floor(np.min(line[ok]))) - 2, 0)
+y1 = int(np.ceil(np.max(line[ok]))) + 3
+x0 = max(int(np.floor(np.min(pixel[ok]))) - 2, 0)
+x1 = int(np.ceil(np.max(pixel[ok]))) + 3
+# both coordinates clipped to the image extent, then read Window(x0, y0, x1-x0, y1-y0)
+```
+
+Billi near sampling needs the full 2x2 block at the very edge of the footprint, not just its center pixel, so we add a -2 and +3 margin.
+`line` and `pixel` refer to the *full* SAR image, while `dn` starts at `(y0, x0)`. 
+```python
+val = sample_bilinear(dn, line - y0, pixel - x0, nodata=nodata)
+out = val.reshape(h, w).astype(np.uint16)
+```
+
+The `reshape` at the end restores the flattend arrays back to the dems width and height. We reuse the DEM's own transform and CRS, so the GeoTIFF lands pixel-for-pixel on the elevation model by construction:
+
+```python
+with rasterio.open(out_path, "w", driver="GTiff", height=h, width=w,
+                   count=1, dtype="uint16", crs=crs,
+                   transform=transform, nodata=nodata) as dst:
+    dst.write(out, 1)
+```
+
+`run_aoi` also returns `valid_frac` and the source window. On my machine a 1000x1000 tile takes about 27 seconds, and the ridge lines in the SAR image land exactly where the DEM hillshade puts them.
+
+**And tada, the terrain-corrected image is on disk.** Map pixel to lon/lat, lon/lat to ECEF, ECEF to zero-Doppler time, time to slant range, range to ground range, and back into a radar pixel, then a bilinear blend and a GeoTIFF that shares the DEM's grid.
 
 ## References
 
