@@ -266,7 +266,6 @@ def run_aoi(
     EE, NN = np.meshgrid(E, N)
 
     # Transform DEM coordinates into longitude/latitude.
-    #
     # SAR orbit calculations are performed in ECEF/WGS84 coordinates,
     # therefore we need geographic coordinates before converting them
     # to ECEF inside geocode_tile().

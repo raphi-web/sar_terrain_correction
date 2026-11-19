@@ -211,8 +211,8 @@ v_t = (dh00 * p_i + dh10 * m_i + dh01 * p_next + dh11 * m_next) / h[:, None]
 
 At $s = 0$ only $h'_{10} = 1$ survives, so $V = m_i / h = v_i$. 
 
-### The check that actually matters
-Use the spline to place all 210 geolocation points, and compare the geometric range with the range the radar measured from the echo delay.
+### Verifying the interpolation
+Using the spline to place all 210 geolocation points, and compare the geometric range with the range the radar measured from the echo delay.
 
 ```
 max | |S(t) - P| - c * tau / 2 | = 0.219 mm
@@ -283,12 +283,46 @@ tim = io.timing() # load timing metadata
 line = (t - tim["t0"]) / tim["dt_az"]
 ```
 
-**And tada, we can now convert any Point to our Radar Coordinates** 
+**And tada, we can now convert any Point to our Radar Coordinates and vise versa** 
 
 ## Aligning the SAR image with the DEM
+Now we get into the meat of things! The problem with our doppler time functions is that they are slow when processing a whole image, so we need a vectorized version.
 
+We start out by converting our dem pixels latitude and longitude to the ECEF coordinate system `P = lla2ecef(lat, lon, h)`. Then we obtain our orbits `t_orb, _, _ = io.orbit_arrays()` 
+ 
+Now it is time for our vectorized numpy magic! We use the orbit start and end-time as our initial bounds for the bisection, define a function that calculates the dot product for every point at once, and evaluate the doppler function at the lower boundary:
 
+```python
+lo = np.full(len(P), float(t_orb[0]))
+hi = np.full(len(P), float(t_orb[-1]))
 
+def f(t):
+    S = orbit.position(t)
+    V = orbit.velocity(t)
+    return np.sum((S - P) * V, axis=1)
+
+f_lo = f(lo)
+```
+
+We use 60 iterations to find the azimuth time for each point. `lo` and `hi` are 1D arrays and each value is adjusted independently from its neighbours. In every iteration we calculate the midpoints and evaluate the doppler function on them, then compare the sign against the value stored at the lower boundary: wherever `fm` has the same sign as `f_lo`, the root must lie *above* the midpoint, so we move `lo` up, everywhere else we pull `hi` down. Updating `f_lo` together with the boundary keeps the stored sign in sync, so we never have to re-evaluate a boundary.
+
+```python
+for _ in range(60):
+    mid = 0.5 * (lo + hi)
+    fm = f(mid)
+    same = (fm > 0) == (f_lo > 0)
+    lo = np.where(same, mid, lo)
+    hi = np.where(same, hi, mid)
+    f_lo = np.where(same, fm, f_lo)
+```
+
+Just like in the scalar version, the answer is the middle of the final bracket:
+
+```python
+t = 0.5 * (lo + hi)
+```
+
+60 iterations halve the orbit interval by 2^60 — far beyond what float64 can resolve so the bracket collapses to machine precision after ~30 steps. `t` is now the zero-Doppler acquisition time for every DEM pixel, one vectorized stroke instead of a loop over millions of points.
 
 ## References
 
