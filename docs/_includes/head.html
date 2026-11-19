@@ -25,6 +25,10 @@
     }
     /* Minima's dark top border on the header would sit right under the hero */
     .site-header { border-top: none; }
+
+    /* Blog text container: minima caps .wrapper at 800px ($content-width);
+       widen it by 30% to 1040px. Header/footer keep the original 800px. */
+    .page-content .wrapper { max-width: 1040px; }
   </style>
   {%- if jekyll.environment == 'production' and site.google_analytics -%}
     {%- include google-analytics.html -%}
